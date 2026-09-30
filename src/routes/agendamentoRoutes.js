@@ -1,16 +1,23 @@
 const express = require("express");
 const router = express.Router();
 
-const {criarAgendamento,listarAgendamentos,atualizarStatus} = require("../controllers/AgendamentoController")
+const {criarAgendamento,listarAgendamentos,atualizarStatus,cancelarAgendamento,excluirAgendamento} = require("../controllers/AgendamentoController")
 
 //rota para adicionar agendamentos
-router.post('/agendamento' , criarAgendamento)
+router.post('/agendamentos' , criarAgendamento)
 
 // rota para LER os dados
-router.get('/agendamento', listarAgendamentos);
+router.get('/agendamentos', listarAgendamentos);
 
 // Nova rota para ATUALIZAR status
-router.patch('/agendamento/:id/status', atualizarStatus);
+router.patch('/agendamentos/:id/status', atualizarStatus);
+
+// Nova Rota para Cancelar (Passando o ID na URL)
+router.patch('/agendamentos/:id/cancelar', cancelarAgendamento);
+
+router.delete('/agendamentos/:id', excluirAgendamento)
+
+
 
 
 

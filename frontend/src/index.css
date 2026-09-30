@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@theme {
+  --color-let-verde: #103b30;
+  --color-let-verde2: #0d8a7b;
+  --color-let-bege: #efe5d6;
+  --color-let-bege2: #d7c2a5;
+  --color-let-texto: #17352d;
+}

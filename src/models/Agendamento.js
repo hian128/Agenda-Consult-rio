@@ -57,9 +57,34 @@ async function atualizarStatusNoBanco(id, status) {
     return resultado.rows[0]; // Retorna o agendamento atualizado (ou undefined se o ID não existir)
 }
 
+async function buscarAgendamentoPorId(id) {
+    const resultado = await pool.query("SELECT * FROM agendamentos WHERE id = $1", [id]);
+    return resultado.rows[0];
+}
+
+async function cancelarAgendamentoNoBanco(id, multa_cancelamento) {
+    const resultado = await pool.query(
+        "UPDATE agendamentos SET status = 'cancelado', multa_cancelamento = $1 WHERE id = $2 RETURNING *",
+        [multa_cancelamento, id]
+    );
+    return resultado.rows[0];
+}
+
+// Função para apagar definitivamente do banco
+async function excluirAgendamentoNoBanco(id) {
+    const resultado = await pool.query(
+        "DELETE FROM agendamentos WHERE id = $1 RETURNING *",
+        [id]
+    );
+    return resultado.rows[0]; // Retorna os dados apagados, ou undefined se o ID não existir
+}
+
 module.exports = {
     criarAgendamentoNoBanco,
     buscarServicoPorId,
     listarAgendamentosNoBanco,
-    atualizarStatusNoBanco
+    atualizarStatusNoBanco,
+    buscarAgendamentoPorId,
+    cancelarAgendamentoNoBanco,
+    excluirAgendamentoNoBanco
 };

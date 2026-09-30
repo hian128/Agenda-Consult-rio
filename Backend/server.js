@@ -1,5 +1,10 @@
+require('dotenv').config();
 const express = require("express");
 const app = express();
+const cors = require('cors');
+
+app.use(cors()); 
+app.use(express.json());
 
 // Importa o arquivo de rotas agendamentos
 const agendamentoRoutes = require("../src/routes/agendamentoRoutes");
