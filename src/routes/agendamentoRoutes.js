@@ -15,10 +15,7 @@ router.patch('/agendamentos/:id/status', atualizarStatus);
 // Nova Rota para Cancelar (Passando o ID na URL)
 router.patch('/agendamentos/:id/cancelar', cancelarAgendamento);
 
-router.delete('/agendamentos/:id', excluirAgendamento)
-
-
-
+router.delete('/agendamentos/:id', excluirAgendamento);
 
 
 

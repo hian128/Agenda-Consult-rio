@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import logoImg from './assets/logo.jpg';
 import fotoIrys from './assets/irys.jpg'
+import { FaWhatsapp } from "react-icons/fa";
+
 
 export default function App() {
   const [agendamentos, setAgendamentos] = useState([]);
   const [filtro, setFiltro] = useState('hoje'); // 'hoje', 'semana', 'mes', 'pendentes', 'todos'
   const [menuAtivo, setMenuAtivo] = useState('agenda'); // 'agenda', 'pacientes', 'relatorios'
+  const [pacientes, setPacientes] = useState([]);
 
   const buscarAgendamentos = async () => {
     try {
@@ -17,8 +20,20 @@ export default function App() {
     }
   };
 
+  const buscarPacientes = async () => {
+    try {
+
+      const resposta = await fetch('http://localhost:3000/pacientes');
+      const dados = await resposta.json();
+      setPacientes(dados);
+    } catch (erro) {
+      console.error("Erro ao buscar pacientes:", erro);
+    }
+  };
+
   useEffect(() => {
     buscarAgendamentos();
+    buscarPacientes();
   }, []);
 
   const alterarStatus = async (id, novoStatus) => {
@@ -71,6 +86,8 @@ export default function App() {
     // Se o filtro for 'todos' ou qualquer outro, retorna tudo
     return true;
   });
+
+
 
   const deletarAgendamento = async (id) => {
     const confirmar = window.confirm("Tem a certeza que deseja apagar este agendamento definitivamente?");
@@ -182,7 +199,7 @@ export default function App() {
                   className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer
                     ${filtro === 'semana' ? 'bg-[#103b30] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
                 >
-                  🗓️ 7 Dias
+                  🗓️ Semana
                 </button>
                 <button
                   onClick={() => setFiltro('mes')}
@@ -294,9 +311,49 @@ export default function App() {
           )}
 
           {menuAtivo === 'pacientes' && (
-            <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center shadow-xs">
-              <h3 className="text-lg font-bold text-[#103b30] mb-2">Módulo de Pacientes</h3>
-              <p className="text-sm text-slate-500">Aqui listaremos o cadastro completo dos pacientes da clínica em breve.</p>
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+              <h3 className="text-lg font-bold text-[#103b30] mb-6">Lista de Pacientes Cadastrados</h3>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-xs uppercase text-slate-500">
+                      <th className="pb-3 font-semibold">Nome do Paciente</th>
+                      <th className="pb-3 font-semibold">CPF</th>
+                      <th className="pb-3 font-semibold">Telefone / WhatsApp</th>
+                      <th className="pb-3 font-semibold">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pacientes.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" className="text-center py-8 text-slate-500">Nenhum paciente cadastrado ainda.</td>
+                      </tr>
+                    ) : (
+                      pacientes.map((paciente) => (
+                        <tr key={paciente.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                          <td className="py-4 font-medium text-slate-800">{paciente.nome_completo}</td>
+                          <td className="py-4 text-slate-600">{paciente.cpf}</td>
+                          <td className="py-4 text-slate-600">{paciente.telefone}</td>
+                          <td className="py-4 whitespace-nowrap">
+                            <a
+                              href={`https://wa.me/55${paciente.telefone.replace(/\D/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex flex-row items-center gap-2 whitespace-nowrap
+               bg-green-100 text-green-700 px-2 py-2 rounded-lg
+               font-bold text-sm hover:bg-green-200 transition-colors"
+                            >
+                              <FaWhatsapp size={20} className="shrink-0" />
+                              <span>WhatsApp</span>
+                            </a>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

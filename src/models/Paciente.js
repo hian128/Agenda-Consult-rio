@@ -3,7 +3,7 @@ const pool = require("../config/db");
 
 async function buscarPacientePorCpf(cpf) {
     const resultado = await pool.query(
-        "SELECT id FROM pacientes WHERE cpf = $1", 
+        "SELECT id FROM pacientes WHERE cpf = $1",
         [cpf]
     );
     return resultado.rows[0]; // Retorna o paciente se existir, ou undefined se não existir
@@ -17,7 +17,24 @@ async function criarPacienteNoBanco(nome_completo, cpf, telefone) {
     return resultado.rows[0]; // Retorna o ID recém-criado
 }
 
+async function listarPacientesNoBanco() {
+    const resultado = await pool.query("SELECT * FROM pacientes"); 
+    return resultado.rows; 
+}
+
+
+async function deletarPacienteNoBanco(id){
+    const resultado = await pool.query("DELETE FROM pacientes WHERE ID = $1 RETURNING *" ,
+    [id])
+    return resultado.rowCount > 0;
+}
+
+
+
+    
 module.exports = {
     buscarPacientePorCpf,
-    criarPacienteNoBanco
+    criarPacienteNoBanco,
+    listarPacientesNoBanco,
+    deletarPacienteNoBanco
 };

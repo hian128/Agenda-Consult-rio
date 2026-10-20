@@ -1,17 +1,55 @@
 const { criarAgendamentoNoBanco, buscarServicoPorId, listarAgendamentosNoBanco, atualizarStatusNoBanco, cancelarAgendamentoNoBanco, buscarAgendamentoPorId, excluirAgendamentoNoBanco } = require("../models/Agendamento");
 const { buscarPacientePorCpf, criarPacienteNoBanco } = require("../models/Paciente");
-// Função para criar agendamento 
+// Função matemática rigorosa para validar se um CPF é real (Colocar FORA da criarAgendamento)
+function validarCPF(cpf) {
+    cpf = cpf.replace(/\D/g, ''); // Remove tudo o que não é número
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+
+    let soma = 0, resto;
+    for (let i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(9, 10))) return false;
+
+    soma = 0;
+    for (let i = 1; i <= 10; i++) soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(10, 11))) return false;
+
+    return true;
+}
+
+// Tua função atualizada e blindada
 async function criarAgendamento(req, res) {
-    // 1. Agora recebemos os dados do paciente em vez do paciente_id
+    // 1. Agora recebemos os dados do paciente
     const {
         paciente_nome, paciente_cpf, paciente_telefone,
         profissional_id, servico_id, data_hora_inicio, sintomas_cliente
     } = req.body;
 
-    // 2. Validação atualizada
+    
+
+    // 2. Validação básica de campos
     if (!paciente_nome || !paciente_cpf || !paciente_telefone || !profissional_id || !servico_id || !data_hora_inicio) {
         return res.status(400).json({ msg: "Faltam campos obrigatórios!" });
     }
+
+    // --- NOVA BLINDAGEM DE DADOS ---
+    // Limpa os caracteres especiais (deixa só números)
+    const cpfLimpo = paciente_cpf.replace(/\D/g, '');
+    const telefoneLimpo = paciente_telefone.replace(/\D/g, '');
+
+    // Valida se o CPF existe matematicamente
+    if (!validarCPF(cpfLimpo)) {
+        return res.status(400).json({ msg: "CPF inválido. Verifique os números digitados." });
+    }
+
+    // Valida se o telefone tem o tamanho certo no Brasil (DDD + 8 ou 9 dígitos)
+    if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
+        return res.status(400).json({ msg: "Telefone inválido. Insira o DDD e o número completo." });
+    }
+    // -------------------------------
 
     // 3. Bloqueio de viagem no tempo
     const dataInicioSolicitada = new Date(data_hora_inicio);
@@ -22,21 +60,19 @@ async function criarAgendamento(req, res) {
     }
 
     try {
-        // --- NOVA LÓGICA DE PACIENTES ---
         let paciente_id;
 
-        // Verifica se o paciente já existe pelo CPF
-        const pacienteExistente = await buscarPacientePorCpf(paciente_cpf);
+        // Verifica se o paciente já existe pelo CPF (USANDO O CPF LIMPO)
+        const pacienteExistente = await buscarPacientePorCpf(cpfLimpo);
 
         if (pacienteExistente) {
             // Se existe, usamos o ID dele
             paciente_id = pacienteExistente.id;
         } else {
-            // Se não existe, criamos na hora!
-            const novoPaciente = await criarPacienteNoBanco(paciente_nome, paciente_cpf, paciente_telefone);
+            // Se não existe, criamos na hora (USANDO CPF E TELEFONE LIMPOS)
+            const novoPaciente = await criarPacienteNoBanco(paciente_nome, cpfLimpo, telefoneLimpo);
             paciente_id = novoPaciente.id;
         }
-        // --------------------------------
 
         // 4. Buscar serviço e calcular hora final
         const servico = await buscarServicoPorId(servico_id);
@@ -50,7 +86,7 @@ async function criarAgendamento(req, res) {
 
         // 5. Salvar o agendamento no banco
         const adicionar = await criarAgendamentoNoBanco(
-            paciente_id, // Usamos o UUID encontrado ou recém-gerado!
+            paciente_id,
             profissional_id,
             servico_id,
             dataInicioSolicitada,
