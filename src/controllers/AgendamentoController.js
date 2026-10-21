@@ -1,4 +1,4 @@
-const { criarAgendamentoNoBanco, buscarServicoPorId, listarAgendamentosNoBanco, atualizarStatusNoBanco, cancelarAgendamentoNoBanco, buscarAgendamentoPorId, excluirAgendamentoNoBanco } = require("../models/Agendamento");
+const { criarAgendamentoComPaciente, criarAgendamentoNoBanco, buscarServicoPorId, listarAgendamentosNoBanco, atualizarStatusNoBanco, cancelarAgendamentoNoBanco, buscarAgendamentoPorId, excluirAgendamentoNoBanco } = require("../models/Agendamento");
 const { buscarPacientePorCpf, criarPacienteNoBanco } = require("../models/Paciente");
 // Função matemática rigorosa para validar se um CPF é real (Colocar FORA da criarAgendamento)
 function validarCPF(cpf) {
@@ -22,13 +22,11 @@ function validarCPF(cpf) {
 
 // Tua função atualizada e blindada
 async function criarAgendamento(req, res) {
-    // 1. Agora recebemos os dados do paciente
+    // 1. Recebemos os dados do paciente e do agendamento
     const {
         paciente_nome, paciente_cpf, paciente_telefone,
         profissional_id, servico_id, data_hora_inicio, sintomas_cliente
     } = req.body;
-
-    
 
     // 2. Validação básica de campos
     if (!paciente_nome || !paciente_cpf || !paciente_telefone || !profissional_id || !servico_id || !data_hora_inicio) {
@@ -60,20 +58,6 @@ async function criarAgendamento(req, res) {
     }
 
     try {
-        let paciente_id;
-
-        // Verifica se o paciente já existe pelo CPF (USANDO O CPF LIMPO)
-        const pacienteExistente = await buscarPacientePorCpf(cpfLimpo);
-
-        if (pacienteExistente) {
-            // Se existe, usamos o ID dele
-            paciente_id = pacienteExistente.id;
-        } else {
-            // Se não existe, criamos na hora (USANDO CPF E TELEFONE LIMPOS)
-            const novoPaciente = await criarPacienteNoBanco(paciente_nome, cpfLimpo, telefoneLimpo);
-            paciente_id = novoPaciente.id;
-        }
-
         // 4. Buscar serviço e calcular hora final
         const servico = await buscarServicoPorId(servico_id);
         if (!servico) {
@@ -82,18 +66,39 @@ async function criarAgendamento(req, res) {
 
         const duracaoMs = servico.duracao_minutos * 60 * 1000;
         const data_hora_fim = new Date(dataInicioSolicitada.getTime() + duracaoMs);
-        const status = 'pendente';
 
-        // 5. Salvar o agendamento no banco
-        const adicionar = await criarAgendamentoNoBanco(
-            paciente_id,
+        // Prepara os dados limpos para enviar para o Model
+        const dadosLimpos = {
+            paciente_nome,
+            paciente_cpf: cpfLimpo,
+            paciente_telefone: telefoneLimpo,
             profissional_id,
             servico_id,
-            dataInicioSolicitada,
-            data_hora_fim,
-            status,
+            data_hora_inicio: dataInicioSolicitada,
             sintomas_cliente
-        );
+        };
+
+        let adicionar;
+
+        // Verifica se o paciente já existe pelo CPF
+        const pacienteExistente = await buscarPacientePorCpf(cpfLimpo);
+
+        if (pacienteExistente) {
+            // SE EXISTE: Mantemos o teu código original! Cria só o agendamento
+            const status = 'pendente';
+            adicionar = await criarAgendamentoNoBanco(
+                pacienteExistente.id,
+                profissional_id,
+                servico_id,
+                dataInicioSolicitada,
+                data_hora_fim,
+                status,
+                sintomas_cliente
+            );
+        } else {
+            // SE NÃO EXISTE: Chama a nossa nova TRANSAÇÃO para criar os 2 ao mesmo tempo!
+            adicionar = await criarAgendamentoComPaciente(dadosLimpos, data_hora_fim);
+        }
 
         res.status(201).json({
             msg: "Agendamento criado com sucesso!",
@@ -101,8 +106,8 @@ async function criarAgendamento(req, res) {
         });
 
     } catch (error) {
-        if (error.code === '23P01') {
-            return res.status(409).json({ msg: "Horário Indisponível! O dentista já tem consulta neste horário." });
+        if (error.code === '23P01' || error.code === '23505') { // Adicionei 23505 por segurança de chave duplicada
+            return res.status(409).json({ msg: "Horário Indisponível ou conflito de dados." });
         }
         console.error("Erro ao criar agendamento:", error);
         res.status(500).json({ msg: "Erro interno no servidor." });

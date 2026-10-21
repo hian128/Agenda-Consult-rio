@@ -79,6 +79,53 @@ async function excluirAgendamentoNoBanco(id) {
     return resultado.rows[0]; // Retorna os dados apagados, ou undefined se o ID não existir
 }
 
+// NOVA FUNÇÃO: Criar Paciente + Agendamento (Combo 2 em 1 usando Transação)
+async function criarAgendamentoComPaciente(dados, data_hora_fim) {
+    const client = await pool.connect(); // Abre a conexão especial para transação
+
+    try {
+        await client.query('BEGIN'); // Inicia a transação
+
+        // 1. Inserir o Paciente
+        const queryPaciente = `
+            INSERT INTO pacientes (nome_completo, cpf, telefone) 
+            VALUES ($1, $2, $3) 
+            RETURNING id;
+        `;
+        const valoresPaciente = [dados.paciente_nome, dados.paciente_cpf, dados.paciente_telefone];
+        const resultPaciente = await client.query(queryPaciente, valoresPaciente);
+
+        const novoPacienteId = resultPaciente.rows[0].id;
+
+        // 2. Inserir o Agendamento (já com status 'pendente')
+        const queryAgendamento = `
+            INSERT INTO agendamentos 
+            (paciente_id, profissional_id, servico_id, data_hora_inicio, data_hora_fim, status, sintomas_cliente) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7) 
+            RETURNING *;
+        `;
+        const valoresAgendamento = [
+            novoPacienteId,
+            dados.profissional_id,
+            dados.servico_id,
+            dados.data_hora_inicio,
+            data_hora_fim, 
+            'pendente',    // Status inicial padrão
+            dados.sintomas_cliente
+        ];
+        const resultAgendamento = await client.query(queryAgendamento, valoresAgendamento);
+
+        await client.query('COMMIT'); // Salva tudo no banco!
+        return resultAgendamento.rows[0];
+
+    } catch (error) {
+        await client.query('ROLLBACK'); // Desfaz tudo se der erro!
+        throw error;
+    } finally {
+        client.release(); // Liberta a conexão
+    }
+}
+
 module.exports = {
     criarAgendamentoNoBanco,
     buscarServicoPorId,
@@ -86,5 +133,6 @@ module.exports = {
     atualizarStatusNoBanco,
     buscarAgendamentoPorId,
     cancelarAgendamentoNoBanco,
-    excluirAgendamentoNoBanco
+    excluirAgendamentoNoBanco,
+    criarAgendamentoComPaciente
 };

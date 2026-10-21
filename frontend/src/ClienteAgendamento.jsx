@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import fotoRecepcao from './assets/foto  clínica.png';
-import fotoIrys from './assets/irys.jpg'
+import fotoRecepcao from './assets/foto  clínica.png'; 
+import fotoIrys from './assets/irys.jpg';
+import fotoLogo from './assets/logo.jpg';
 
 export default function ClienteAgendamento() {
   const [form, setForm] = useState({
     paciente_nome: '',
     paciente_cpf: '',
     paciente_telefone: '',
-    servico_id: 'ID_DO_SERVICO',
-    profissional_id: 'ID_DA_DRA',
+    servico_id: '', 
+    profissional_id: '1fd7f8af-af7f-4224-b477-b3ba832119d2', // ID real da Dra. Irys
     data_hora_inicio: '',
     sintomas_cliente: ''
   });
@@ -20,22 +21,12 @@ export default function ClienteAgendamento() {
     e.preventDefault();
     setErro('');
 
-    // Preparamos os dados exatamente como o teu backend Thunder Client exige
-    const dadosParaBackend = {
-      // Usando um paciente de teste por agora (coloca um UUID válido da tua tabela pacientes)
-      paciente_id: 'COLOQUE_AQUI_O_UUID_DE_UM_PACIENTE_DE_TESTE',
-      profissional_id: form.profissional_id,
-      servico_id: form.servico_id,
-      data_hora_inicio: form.data_hora_inicio,
-      sintomas_cliente: form.sintomas_cliente
-      // O nome e telefone ainda não estão a ir para o banco, vamos resolver isso no próximo passo!
-    };
-
     try {
+      // Agora enviamos o 'form' inteiro diretamente! Sem dados fictícios.
       const resposta = await fetch('http://localhost:3000/agendamentos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosParaBackend)
+        body: JSON.stringify(form) 
       });
 
       if (!resposta.ok) {
@@ -44,7 +35,16 @@ export default function ClienteAgendamento() {
       }
 
       setSucesso(true);
-      setForm({ ...form, paciente_nome: '', paciente_telefone: '', data_hora_inicio: '', sintomas_cliente: '' });
+      // Limpa os campos após o sucesso
+      setForm({ 
+        ...form, 
+        paciente_nome: '', 
+        paciente_cpf: '', 
+        paciente_telefone: '', 
+        servico_id: '',
+        data_hora_inicio: '', 
+        sintomas_cliente: '' 
+      });
     } catch (err) {
       setErro(err.message || 'Não foi possível realizar o agendamento. Tente novamente.');
     }
@@ -53,12 +53,12 @@ export default function ClienteAgendamento() {
   return (
     <div className="relative min-h-screen flex flex-col justify-center items-center p-4 overflow-hidden">
 
-      {/* Fundo com a foto da clínica/recepção desfocada e camada escura elegante */}
+      {/* Fundo com a foto da clínica/recepção desfocada  */}
       <div
         className="absolute inset-0 bg-cover bg-center filter blur-sm scale-105 z-0"
         style={{ backgroundImage: `url(${fotoRecepcao})` }}
       />
-      <div className="absolute inset-0 bg-[#103b30]/75 z-0" /> {/* Camada translúcida verde da marca */}
+      <div className="absolute inset-0 bg-[#103b30]/75 z-0" /> {/* Camada translúcida */}
 
       {/* Caixa do Formulário Flutuante */}
       <div className="relative z-10 max-w-lg w-full bg-white/95 backdrop-blur-md rounded-[30px] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-[#d7c2a5]">
@@ -67,8 +67,8 @@ export default function ClienteAgendamento() {
         <div className="text-center mb-6">
           <div className="inline-block p-1 bg-[#efe5d6] rounded-full mb-3 shadow-inner">
             <img
-              src={fotoIrys}
-              alt="Doutora Letiery"
+              src={fotoLogo}
+              alt="Doutora Irys Letiery"
               className="w-20 h-20 rounded-full object-cover border-2 border-[#0d8a7b]"
             />
           </div>
@@ -127,6 +127,21 @@ export default function ClienteAgendamento() {
               />
             </div>
 
+            {/* ADICIONADO: Campo de Serviço */}
+            <div>
+              <label className="block text-xs font-bold text-[#17352d] uppercase tracking-wider mb-1">Serviço Desejado</label>
+              <select
+                required
+                className="w-full px-4 py-3 rounded-xl border border-[#d7c2a5] focus:outline-none focus:ring-2 focus:ring-[#0d8a7b] text-[#17352d] bg-white"
+                value={form.servico_id}
+                onChange={(e) => setForm({ ...form, servico_id: e.target.value })}
+              >
+                <option value="" disabled>Selecione um serviço...</option>
+                <option value="0dca0c05-f70e-4cde-8dcd-8a5fa4fc18ef">Avaliação</option>
+                <option value="7bb8dee0-2b0c-4a1d-9bf0-fdb4e539ddc5">Limpeza (Profilaxia)</option>
+              </select>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-[#17352d] uppercase tracking-wider mb-1">Data e Hora Desejada</label>
               <input
@@ -142,6 +157,7 @@ export default function ClienteAgendamento() {
               <label className="block text-xs font-bold text-[#17352d] uppercase tracking-wider mb-1">O que está a sentir? / Motivo</label>
               <textarea
                 rows="3"
+                required
                 className="w-full px-4 py-3 rounded-xl border border-[#d7c2a5] focus:outline-none focus:ring-2 focus:ring-[#0d8a7b] text-[#17352d] bg-white"
                 placeholder="Descreva brevemente os sintomas ou tratamento..."
                 value={form.sintomas_cliente}
